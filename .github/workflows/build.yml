@@ -1,0 +1,166 @@
+name: Build Hum Executables
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            output-name: Hum.exe
+            build-script: build.bat
+          - os: ubuntu-latest
+            output-name: Hum
+            build-script: ./build.sh
+          - os: macos-latest
+            output-name: Hum
+            build-script: ./build.sh
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libasound2-dev portaudio19-dev upx-ucl
+
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install portaudio upx
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build executable (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        python build.py
+      shell: cmd
+
+    - name: Build executable (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        chmod +x build.sh
+        python3 build.py
+
+    - name: Test executable exists
+      run: |
+        if [ -f "dist/${{ matrix.output-name }}" ]; then
+          echo "✅ Executable built successfully"
+          ls -la dist/
+        else
+          echo "❌ Executable not found"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Upload executable artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: hum-${{ matrix.os }}
+        path: |
+          dist/${{ matrix.output-name }}
+          dist/Hum-Portable/
+        retention-days: 30
+
+    - name: Get file size
+      id: filesize
+      run: |
+        if [ -f "dist/${{ matrix.output-name }}" ]; then
+          SIZE=$(du -h "dist/${{ matrix.output-name }}" | cut -f1)
+          echo "size=$SIZE" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Upload to release (if release)
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/${{ matrix.output-name }}
+        asset_name: hum-${{ matrix.os }}-${{ matrix.output-name }}
+        asset_content_type: application/octet-stream
+
+  create-release-summary:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Update release description
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const release = await github.rest.repos.getRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: context.payload.release.id
+          });
+
+          const assets = await github.rest.repos.listReleaseAssets({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: context.payload.release.id
+          });
+
+          let body = release.data.body + `
+
+## 📦 Downloads
+
+| Platform | File | Size |
+|----------|------|------|`;
+
+          for (const asset of assets.data) {
+            const platform = asset.name.includes('windows') ? '🪟 Windows' :
+                           asset.name.includes('ubuntu') ? '🐧 Linux' :
+                           asset.name.includes('macos') ? '🍎 macOS' : '❓ Unknown';
+            const sizeKB = Math.round(asset.size / 1024);
+            const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
+            const size = sizeKB > 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+            body += `
+| ${platform} | [${asset.name}](${asset.browser_download_url}) | ${size} |`;
+          }
+
+          body += `
+
+## 🚀 Quick Start
+
+1. Download the executable for your platform
+2. Double-click to run (may need to allow/trust the file)
+3. Grant microphone permissions when prompted
+4. Click the floating pill to start recording!
+
+## 📋 Requirements
+
+- **Windows**: Windows 10/11, Buzz application installed
+- **Linux**: Ubuntu 20.04+, ALSA/PulseAudio, microphone access
+- **macOS**: macOS 10.15+, microphone permissions
+
+*No Python installation required - these are standalone executables!*`;
+
+          await github.rest.repos.updateRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: context.payload.release.id,
+            body: body
+          });
