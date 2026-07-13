@@ -1,0 +1,22 @@
+# Theme matching voice2text.html reference design
+BG_PRIMARY = "#1e2032"
+BG_SECONDARY = "#1e293b"
+BG_CARD = "#0f172a"
+ACCENT_BLUE = "#3b82f6"
+ACCENT_GREEN = "#22c55e"
+ACCENT_PURPLE = "#9c73ff"
+ACCENT_RED = "#f85149"
+TEXT_PRIMARY = "#e0e6f0"
+TEXT_SECONDARY = "#64748b"
+BORDER = "#334155"
+
+# Pill dimensions
+PILL_WIDTH = 340
+PILL_HEIGHT = 72
+PILL_RADIUS = 36
+
+# Fonts
+FONT_FAMILY = "Segoe UI"
+FONT_SIZE_NORMAL = 13
+FONT_SIZE_SMALL = 11
+FONT_SIZE_TITLE = 14
