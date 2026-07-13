@@ -11,13 +11,13 @@ from pathlib import Path
 
 def run_command(cmd, description):
     """Run a command and handle errors."""
-    print(f"\n🔄 {description}...")
+    print(f"\n[*] {description}...")
     try:
         result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        print(f"✅ {description} completed")
+        print(f"[+] {description} completed")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ {description} failed:")
+        print(f"[-] {description} failed:")
         print(f"Command: {cmd}")
         print(f"Error: {e.stderr}")
         return False
@@ -30,22 +30,22 @@ def clean_build():
     for dir_name in dirs_to_clean:
         if os.path.exists(dir_name):
             shutil.rmtree(dir_name)
-            print(f"🗑️  Cleaned {dir_name}/")
+            print(f"[-] Cleaned {dir_name}/")
 
     for pattern in files_to_clean:
         import glob
         for file in glob.glob(pattern):
             os.remove(file)
-            print(f"🗑️  Cleaned {file}")
+            print(f"[-] Cleaned {file}")
 
 def check_dependencies():
     """Check if PyInstaller is installed."""
     try:
         import PyInstaller
-        print("✅ PyInstaller is installed")
+        print("[+] PyInstaller is installed")
         return True
     except ImportError:
-        print("❌ PyInstaller not found. Installing...")
+        print("[-] PyInstaller not found. Installing...")
         return run_command(f"{sys.executable} -m pip install pyinstaller", "Installing PyInstaller")
 
 def build_executable():
@@ -144,9 +144,9 @@ exe = EXE(
 )
 '''
 
-    with open('hum.spec', 'w') as f:
+    with open('hum.spec', 'w', encoding='utf-8') as f:
         f.write(spec_content)
-    print("📝 Created hum.spec file")
+    print("[+] Created hum.spec file")
 
 def build_with_spec():
     """Build using the custom spec file."""
@@ -209,14 +209,14 @@ echo.
 pause
 '''
 
-    with open('install.bat', 'w') as f:
+    with open('install.bat', 'w', encoding='utf-8') as f:
         f.write(installer_content)
-    print("📦 Created install.bat installer script")
+    print("[+] Created install.bat installer script")
 
 def create_portable_package():
     """Create a portable package with all necessary files."""
     if not os.path.exists('dist/Hum.exe'):
-        print("❌ Executable not found. Build first.")
+        print("[-] Executable not found. Build first.")
         return False
 
     # Create portable package directory
@@ -236,7 +236,7 @@ def create_portable_package():
 This is a portable version of Hum Voice-to-Text application.
 
 ## Quick Start
-1. Double-click `Hum.exe` to launch
+1. Double-click Hum.exe to launch
 2. The floating pill will appear at the bottom of your screen
 3. Click the microphone to start recording
 4. Speak naturally, then click pause to transcribe
@@ -248,27 +248,27 @@ This is a portable version of Hum Voice-to-Text application.
 
 ## Troubleshooting
 If the app doesn't start:
-- Right-click Hum.exe → "Run as administrator"
+- Right-click Hum.exe -> "Run as administrator"
 - Check if Buzz is properly installed
 - Ensure microphone permissions are granted
 
 For more help, visit: [GitHub Repository URL]
 '''
 
-    with open(portable_dir / 'README.txt', 'w') as f:
+    with open(portable_dir / 'README.txt', 'w', encoding='utf-8') as f:
         f.write(portable_readme)
 
-    print(f"📦 Created portable package: {portable_dir}")
+    print(f"[+] Created portable package: {portable_dir}")
     return True
 
 def main():
     """Main build process."""
-    print("🚀 Building Hum executable...")
+    print("Building Hum executable...")
     print("=" * 50)
 
     # Check if we're in the right directory
     if not os.path.exists('main.py'):
-        print("❌ main.py not found. Run this script from the project root.")
+        print("[-] main.py not found. Run this script from the project root.")
         return False
 
     # Clean previous builds
@@ -291,22 +291,27 @@ def main():
 
     create_portable_package()
 
+    # Test the build
+    print("\n" + "=" * 50)
+    print("Testing build...")
+    test_result = run_command(f"{sys.executable} test_build.py", "Running build tests")
+
     # Final summary
     print("\n" + "=" * 50)
-    print("🎉 Build completed successfully!")
+    print("[+] Build completed successfully!")
     print("\nGenerated files:")
-    print("📁 dist/Hum.exe - Main executable")
-    print("📁 dist/Hum-Portable/ - Portable package")
+    print("    dist/Hum.exe - Main executable")
+    print("    dist/Hum-Portable/ - Portable package")
     if sys.platform == "win32":
-        print("📁 install.bat - Windows installer script")
+        print("    install.bat - Windows installer script")
 
     # Show file sizes
     exe_path = Path('dist/Hum.exe')
     if exe_path.exists():
         size_mb = exe_path.stat().st_size / (1024 * 1024)
-        print(f"\n📊 Executable size: {size_mb:.1f} MB")
+        print(f"\nExecutable size: {size_mb:.1f} MB")
 
-    print("\n✨ Ready for distribution!")
+    print("\n[+] Ready for distribution!")
     return True
 
 if __name__ == "__main__":

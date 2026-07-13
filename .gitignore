@@ -25,6 +25,7 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
+hum.spec
 
 # Virtual environments
 .env

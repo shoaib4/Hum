@@ -10,36 +10,36 @@ echo.
 REM Check if Python is installed
 python --version >nul 2>&1
 if %errorLevel% neq 0 (
-    echo ❌ Python not found. Please install Python first.
+    echo [-] Python not found. Please install Python first.
     pause
     exit /b 1
 )
 
 REM Check if we're in the right directory
 if not exist "main.py" (
-    echo ❌ main.py not found. Please run this from the project root.
+    echo [-] main.py not found. Please run this from the project root.
     pause
     exit /b 1
 )
 
 REM Install/upgrade build dependencies
-echo 📦 Installing build dependencies...
+echo [*] Installing build dependencies...
 python -m pip install --upgrade pip
 python -m pip install pyinstaller
 
 REM Run the build script
-echo 🔨 Building executable...
+echo [*] Building executable...
 python build.py
 
 REM Check if build succeeded
 if exist "dist\Hum.exe" (
     echo.
-    echo ✅ Build completed successfully!
+    echo [+] Build completed successfully!
     echo.
     echo Generated files:
-    echo 📁 dist\Hum.exe - Main executable
-    echo 📁 dist\Hum-Portable\ - Portable package
-    echo 📁 install.bat - Installer script
+    echo     dist\Hum.exe - Main executable
+    echo     dist\Hum-Portable\ - Portable package
+    echo     install.bat - Installer script
     echo.
     echo You can now:
     echo 1. Run dist\Hum.exe directly
@@ -48,7 +48,7 @@ if exist "dist\Hum.exe" (
     echo.
 ) else (
     echo.
-    echo ❌ Build failed. Check the output above for errors.
+    echo [-] Build failed. Check the output above for errors.
     echo.
 )
 
