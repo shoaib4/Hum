@@ -30,46 +30,14 @@ echo [*] Checking required files...
 echo.
 
 REM Check for whisper-server.exe (should be included in repo)
-if not exist "whisper_cpp\whisper-server.exe" (
-    echo ==========================================
-    echo  MISSING: whisper_cpp\whisper-server.exe
-    echo ==========================================
-    echo.
-    echo This file should have been included in the repository.
-    echo If it's missing, re-clone the repo or download it from:
-    echo   https://github.com/ggerganov/whisper.cpp/releases
-    echo.
-    echo Place whisper-server.exe in the whisper_cpp\ folder.
-    echo.
-    pause
-    exit /b 1
-)
+if not exist "whisper_cpp\whisper-server.exe" goto :missing_server
 
 REM Check for at least one model file
-if not exist "models\ggml-base.bin" (
-    if not exist "models\ggml-tiny.bin" (
-        echo ==========================================
-        echo  MISSING: Whisper model file
-        echo ==========================================
-        echo.
-        echo At least one Whisper model file is required.
-        echo.
-        echo Download a model from:
-        echo   Base model (recommended, ~148 MB):
-        echo     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
-        echo.
-        echo   Tiny model (faster, less accurate, ~75 MB):
-        echo     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
-        echo.
-        echo Place the downloaded .bin file in the models\ folder.
-        echo.
-        echo After placing the file, run this script again.
-        echo.
-        pause
-        exit /b 1
-    )
-)
+if exist "models\ggml-base.bin" goto :files_ok
+if exist "models\ggml-tiny.bin" goto :files_ok
+goto :missing_model
 
+:files_ok
 echo [+] whisper-server.exe found.
 echo [+] Model file(s) found.
 echo.
@@ -115,3 +83,39 @@ if exist "dist\Hum.exe" (
 )
 
 pause
+exit /b 0
+
+:missing_server
+echo ==========================================
+echo  MISSING: whisper_cpp\whisper-server.exe
+echo ==========================================
+echo.
+echo This file should have been included in the repository.
+echo If it's missing, re-clone the repo or download it from:
+echo   https://github.com/ggerganov/whisper.cpp/releases
+echo.
+echo Place whisper-server.exe in the whisper_cpp\ folder.
+echo.
+pause
+exit /b 1
+
+:missing_model
+echo ==========================================
+echo  MISSING: Whisper model file
+echo ==========================================
+echo.
+echo At least one Whisper model file is required.
+echo.
+echo Download a model from:
+echo   Base model (recommended, ~148 MB):
+echo     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+echo.
+echo   Tiny model (faster, less accurate, ~75 MB):
+echo     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+echo.
+echo Place the downloaded .bin file in the models\ folder.
+echo.
+echo After placing the file, run this script again.
+echo.
+pause
+exit /b 1
