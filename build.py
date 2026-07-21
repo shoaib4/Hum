@@ -57,7 +57,7 @@ def build_executable():
         "--onefile",  # Single executable file
         "--windowed",  # No console window (GUI app)
         "--name=Hum",
-        "--icon=assets/icons/power.svg",  # App icon (will be converted)
+        "--icon=assets/icons/hum.ico",  # App icon
         "--add-data=assets;assets",  # Include assets folder
         "--hidden-import=PySide6.QtSvg",  # Ensure QtSvg is included
         "--hidden-import=sounddevice",

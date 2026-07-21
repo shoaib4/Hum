@@ -25,7 +25,7 @@ PYINSTALLER_OPTIONS = {
 
     # Paths and files
     "name": BUILD_NAME,
-    "icon": "assets/icons/power.svg",  # App icon
+    "icon": "assets/icons/hum.ico",  # App icon
     "add_data": [
         ("assets", "assets"),  # Include assets folder
     ],
@@ -88,11 +88,11 @@ ADVANCED_OPTIONS = {
 def get_platform_icon():
     """Get platform-specific icon path."""
     if sys.platform == "win32":
-        return "assets/icons/power.svg"  # Will be converted to .ico
+        return "assets/icons/hum.ico"
     elif sys.platform == "darwin":
-        return "assets/icons/power.svg"  # Will be converted to .icns
+        return "assets/icons/hum.ico"  # Will be converted to .icns
     else:
-        return "assets/icons/power.svg"  # Linux uses SVG or PNG
+        return "assets/images/Hum_icon.png"  # Linux uses PNG
 
 def get_build_command():
     """Generate PyInstaller command based on configuration."""
