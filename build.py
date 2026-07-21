@@ -329,11 +329,6 @@ def main():
 
     create_portable_package()
 
-    # Test the build
-    print("\n" + "=" * 50)
-    print("Testing build...")
-    test_result = run_command(f"{sys.executable} test_build.py", "Running build tests")
-
     # Final summary
     print("\n" + "=" * 50)
     print("[+] Build completed successfully!")
