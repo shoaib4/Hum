@@ -24,10 +24,20 @@ REM Copy executable
 echo Installing Hum executable...
 copy /Y "dist\Hum.exe" "%INSTALL_DIR%\Hum.exe"
 
+REM Copy whisper_cpp folder
+echo Installing whisper server...
+if not exist "%INSTALL_DIR%\whisper_cpp" mkdir "%INSTALL_DIR%\whisper_cpp"
+xcopy /Y /E "whisper_cpp\*" "%INSTALL_DIR%\whisper_cpp\" >nul
+
+REM Copy models folder
+echo Installing model files...
+if not exist "%INSTALL_DIR%\models" mkdir "%INSTALL_DIR%\models"
+xcopy /Y /E "models\*" "%INSTALL_DIR%\models\" >nul
+
 REM Create desktop shortcut
 echo Creating desktop shortcut...
 set "SHORTCUT=%USERPROFILE%\Desktop\Hum.lnk"
-powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\Hum.exe'; $s.Save()"
+powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\Hum.exe'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.Save()"
 
 REM Create start menu entry
 echo Creating start menu entry...
@@ -40,6 +50,11 @@ echo Installation complete!
 echo.
 echo Hum has been installed to: %INSTALL_DIR%
 echo Desktop shortcut created: %USERPROFILE%\Desktop\Hum.lnk
+echo.
+echo Installed files:
+echo   %INSTALL_DIR%\Hum.exe
+echo   %INSTALL_DIR%\whisper_cpp\whisper-server.exe
+echo   %INSTALL_DIR%\models\*.bin
 echo.
 echo You can now run Hum from:
 echo - Desktop shortcut
