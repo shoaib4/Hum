@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import time
@@ -18,6 +19,23 @@ class WhisperServer:
         self.process = None
 
     def start(self) -> bool:
+        if not os.path.isfile(SERVER_EXE):
+            logger.error(
+                f"whisper-server.exe not found at: {SERVER_EXE}\n"
+                "Please download it from https://github.com/ggerganov/whisper.cpp/releases "
+                "and place it in the whisper_cpp/ folder."
+            )
+            return False
+
+        if not os.path.isfile(self.model_path):
+            logger.error(
+                f"Whisper model not found at: {self.model_path}\n"
+                "Please download a model from "
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin "
+                "and place it in the models/ folder."
+            )
+            return False
+
         cmd = [
             SERVER_EXE,
             "--port", str(PORT),

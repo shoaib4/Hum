@@ -35,6 +35,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+myenv/
 
 # IDE
 .vscode/
@@ -53,12 +54,14 @@ ehthumbs.db
 Thumbs.db
 
 # Build artifacts
-*.exe
 *.app
 *.dmg
 *.msi
 *.deb
 *.rpm
+
+# Model files (users download these locally)
+models/*.bin
 
 # Logs
 *.log

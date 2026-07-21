@@ -230,6 +230,41 @@ def create_portable_package():
     if os.path.exists('assets'):
         shutil.copytree('assets', portable_dir / 'assets', dirs_exist_ok=True)
 
+    # Copy whisper_cpp server alongside the executable
+    whisper_dir = Path('whisper_cpp')
+    if whisper_dir.exists():
+        dest_whisper = portable_dir / 'whisper_cpp'
+        dest_whisper.mkdir(exist_ok=True)
+        for f in whisper_dir.glob('*'):
+            if f.is_file() and f.name != 'README.md':
+                shutil.copy2(f, dest_whisper / f.name)
+                print(f"    Bundled: whisper_cpp/{f.name}")
+
+    # Copy models alongside the executable
+    models_dir = Path('models')
+    if models_dir.exists():
+        dest_models = portable_dir / 'models'
+        dest_models.mkdir(exist_ok=True)
+        for f in models_dir.glob('*.bin'):
+            shutil.copy2(f, dest_models / f.name)
+            print(f"    Bundled: models/{f.name}")
+
+    # Also copy whisper_cpp and models next to the standalone exe
+    # (for users who just run dist/Hum.exe directly)
+    dist_dir = Path('dist')
+    dist_whisper = dist_dir / 'whisper_cpp'
+    dist_whisper.mkdir(exist_ok=True)
+    if whisper_dir.exists():
+        for f in whisper_dir.glob('*'):
+            if f.is_file() and f.name != 'README.md':
+                shutil.copy2(f, dist_whisper / f.name)
+
+    dist_models = dist_dir / 'models'
+    dist_models.mkdir(exist_ok=True)
+    if models_dir.exists():
+        for f in models_dir.glob('*.bin'):
+            shutil.copy2(f, dist_models / f.name)
+
     # Create readme for portable version
     portable_readme = '''# Hum Portable
 
@@ -244,15 +279,18 @@ This is a portable version of Hum Voice-to-Text application.
 ## Requirements
 - Windows 10/11
 - Microphone access
-- Buzz application installed (for Whisper server)
+
+## Included Files
+- whisper_cpp/whisper-server.exe - Local speech recognition server
+- models/ggml-base.bin - Whisper speech model
 
 ## Troubleshooting
 If the app doesn't start:
 - Right-click Hum.exe -> "Run as administrator"
-- Check if Buzz is properly installed
 - Ensure microphone permissions are granted
+- Check that whisper_cpp/ and models/ folders are next to Hum.exe
 
-For more help, visit: [GitHub Repository URL]
+For more help, visit: https://github.com/shoaibsiddiquie/hum
 '''
 
     with open(portable_dir / 'README.txt', 'w', encoding='utf-8') as f:
