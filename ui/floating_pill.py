@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QWidget, QApplication
 from PySide6.QtCore import Qt, QPoint, QTimer, Signal, QRect, QRectF
 from PySide6.QtGui import (
     QPainter, QColor, QPainterPath, QFont, QPen, QBrush,
-    QLinearGradient, QRadialGradient
+    QLinearGradient, QRadialGradient, QPixmap
 )
 from PySide6.QtSvg import QSvgRenderer
 
@@ -17,6 +17,11 @@ _ICONS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", 
 def _load_svg(name: str) -> QSvgRenderer:
     path = os.path.join(_ICONS_DIR, f"{name}.svg")
     return QSvgRenderer(path)
+
+
+def _load_png(name: str) -> QPixmap:
+    path = os.path.join(_ICONS_DIR, f"{name}.png")
+    return QPixmap(path)
 
 
 # Colors from reference HTML
@@ -89,6 +94,13 @@ class FloatingPill(QWidget):
         self._svg_settings = _load_svg("settings")
         self._svg_power = _load_svg("power")
         self._svg_copy = _load_svg("copy")
+
+        # Load state PNG icons for the left-side button
+        self._icon_idle = _load_png("hum_idle")
+        self._icon_listening = _load_png("hum_listening")
+        self._icon_processing = _load_png("hum_processing")
+        self._icon_success = _load_png("hum_success")
+        self._icon_error = _load_png("hum_error")
 
         self._setup_window()
 
@@ -197,48 +209,28 @@ class FloatingPill(QWidget):
         p.end()
 
     def _paint_mic_icon(self, p: QPainter, x: int, y: int):
-        """Draw the gradient mic button."""
-        # Choose gradient colors
+        """Draw the state-specific icon from PNG assets."""
         if self._state == AppState.IDLE:
-            top, bot = Colors.MIC_GRAD_TOP_IDLE, Colors.MIC_GRAD_BOT_IDLE
+            pixmap = self._icon_idle
         elif self._state == AppState.RECORDING:
-            top, bot = Colors.MIC_GRAD_TOP_REC, Colors.MIC_GRAD_BOT_REC
+            pixmap = self._icon_listening
         elif self._state == AppState.PROCESSING:
-            top, bot = Colors.MIC_GRAD_TOP_PROC, Colors.MIC_GRAD_BOT_PROC
-        elif self._state == AppState.ERROR:
-            top, bot = Colors.MIC_GRAD_TOP_ERROR, Colors.MIC_GRAD_BOT_ERROR
+            pixmap = self._icon_processing
+        elif self._state == AppState.SUCCESS:
+            pixmap = self._icon_success
         else:
-            top, bot = Colors.MIC_GRAD_TOP_SUCCESS, Colors.MIC_GRAD_BOT_SUCCESS
+            pixmap = self._icon_error
 
-        grad = QLinearGradient(x, y, x, y + MIC_SIZE)
-        grad.setColorAt(0, top)
-        grad.setColorAt(1, bot)
-
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(grad))
-
-        mic_path = QPainterPath()
-        mic_path.addRoundedRect(QRectF(x, y, MIC_SIZE, MIC_SIZE), MIC_RADIUS, MIC_RADIUS)
-        p.drawPath(mic_path)
-
-        # Draw mic/check symbol
-        p.setPen(QPen(Colors.TEXT_WHITE, 2.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        cx = x + MIC_SIZE // 2
-        cy = y + MIC_SIZE // 2
-
-        if self._state == AppState.SUCCESS:
-            # Checkmark
-            p.drawLine(cx - 6, cy, cx - 2, cy + 4)
-            p.drawLine(cx - 2, cy + 4, cx + 6, cy - 5)
-        elif self._state == AppState.ERROR:
-            # X mark
-            p.drawLine(cx - 5, cy - 5, cx + 5, cy + 5)
-            p.drawLine(cx - 5, cy + 5, cx + 5, cy - 5)
-        else:
-            # Microphone
-            p.drawRoundedRect(QRectF(cx - 3, cy - 8, 6, 12), 3, 3)
-            p.drawArc(QRect(cx - 7, cy - 2, 14, 12), 0, -180 * 16)
-            p.drawLine(cx, cy + 10, cx, cy + 13)
+        # Scale the icon to fit the MIC_SIZE area
+        scaled = pixmap.scaled(
+            MIC_SIZE, MIC_SIZE,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        # Center the scaled icon in the MIC_SIZE box
+        offset_x = x + (MIC_SIZE - scaled.width()) // 2
+        offset_y = y + (MIC_SIZE - scaled.height()) // 2
+        p.drawPixmap(offset_x, offset_y, scaled)
 
     def _paint_idle_content(self, p: QPainter, x: int):
         # Title
