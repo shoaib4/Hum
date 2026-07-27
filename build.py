@@ -48,35 +48,6 @@ def check_dependencies():
         print("[-] PyInstaller not found. Installing...")
         return run_command(f"{sys.executable} -m pip install pyinstaller", "Installing PyInstaller")
 
-def build_executable():
-    """Build the executable using PyInstaller."""
-
-    # Create the PyInstaller command
-    cmd = [
-        "pyinstaller",
-        "--onefile",  # Single executable file
-        "--windowed",  # No console window (GUI app)
-        "--name=Hum",
-        "--icon=assets/icons/hum.ico",  # App icon
-        "--add-data=assets;assets",  # Include assets folder
-        "--hidden-import=PySide6.QtSvg",  # Ensure QtSvg is included
-        "--hidden-import=sounddevice",
-        "--hidden-import=numpy",
-        "--exclude-module=matplotlib",  # Reduce size
-        "--exclude-module=scipy",
-        "--exclude-module=pandas",
-        "--optimize=2",  # Python optimization
-        "main.py"
-    ]
-
-    # Platform-specific adjustments
-    if sys.platform == "win32":
-        cmd.insert(-1, "--console")  # Keep console on Windows for debugging
-        cmd.insert(-1, "--uac-admin")  # Request admin for text insertion
-
-    cmd_str = " ".join(cmd)
-    return run_command(cmd_str, "Building executable")
-
 def create_spec_file():
     """Create a custom spec file for more control."""
     spec_content = '''# -*- mode: python ; coding: utf-8 -*-
@@ -141,6 +112,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/icons/hum.ico',
 )
 '''
 
@@ -183,15 +155,32 @@ REM Copy executable
 echo Installing Hum executable...
 copy /Y "dist\\Hum.exe" "%INSTALL_DIR%\\Hum.exe"
 
-REM Create desktop shortcut
+REM Copy whisper_cpp folder
+echo Installing whisper server...
+if not exist "%INSTALL_DIR%\\whisper_cpp" mkdir "%INSTALL_DIR%\\whisper_cpp"
+xcopy /Y /E "whisper_cpp\\*" "%INSTALL_DIR%\\whisper_cpp\\" >nul
+
+REM Copy models folder
+echo Installing model files...
+if not exist "%INSTALL_DIR%\\models" mkdir "%INSTALL_DIR%\\models"
+xcopy /Y /E "models\\*" "%INSTALL_DIR%\\models\\" >nul
+
+REM Create desktop shortcut (delete first so Windows doesn't reuse a cached icon)
 echo Creating desktop shortcut...
 set "SHORTCUT=%USERPROFILE%\\Desktop\\Hum.lnk"
-powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\\Hum.exe'; $s.Save()"
+if exist "%SHORTCUT%" del /f /q "%SHORTCUT%"
+powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\\Hum.exe'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%INSTALL_DIR%\\Hum.exe,0'; $s.Save()"
 
 REM Create start menu entry
 echo Creating start menu entry...
 set "STARTMENU=%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs"
+if exist "%STARTMENU%\\Hum.lnk" del /f /q "%STARTMENU%\\Hum.lnk"
 copy /Y "%SHORTCUT%" "%STARTMENU%\\Hum.lnk"
+
+REM Refresh Windows icon cache so the new icon shows immediately
+echo Refreshing icon cache...
+powershell -Command "Get-ChildItem \\"$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\\" -Filter 'iconcache*' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"
+ie4uinit.exe -show >nul 2>&1
 
 echo.
 echo ==========================================
@@ -204,6 +193,9 @@ echo You can now run Hum from:
 echo - Desktop shortcut
 echo - Start menu
 echo - Direct path: %INSTALL_DIR%\\Hum.exe
+echo.
+echo NOTE: If the icon still looks old, restart Windows Explorer
+echo (Task Manager -^> Windows Explorer -^> Restart) or reboot.
 echo ==========================================
 echo.
 pause
@@ -350,4 +342,4 @@ def main():
 if __name__ == "__main__":
     success = main()
     if not success:
-        sys.exit(1)
+        sys.exit(1)

@@ -24,11 +24,21 @@ REM Copy executable
 echo Installing Hum executable...
 copy /Y "dist\Hum.exe" "%INSTALL_DIR%\Hum.exe"
 
+REM Copy whisper_cpp folder
+echo Installing whisper server...
+if not exist "%INSTALL_DIR%\whisper_cpp" mkdir "%INSTALL_DIR%\whisper_cpp"
+xcopy /Y /E "whisper_cpp\*" "%INSTALL_DIR%\whisper_cpp\" >nul
+
+REM Copy models folder
+echo Installing model files...
+if not exist "%INSTALL_DIR%\models" mkdir "%INSTALL_DIR%\models"
+xcopy /Y /E "models\*" "%INSTALL_DIR%\models\" >nul
+
 REM Create desktop shortcut (delete first so Windows doesn't reuse a cached icon)
 echo Creating desktop shortcut...
 set "SHORTCUT=%USERPROFILE%\Desktop\Hum.lnk"
 if exist "%SHORTCUT%" del /f /q "%SHORTCUT%"
-powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\Hum.exe'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%INSTALL_DIR%\Hum.exe,0'; $s.Save()"
+powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\Hum.exe'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%INSTALL_DIR%\Hum.exe,0'; $s.Save()"
 
 REM Create start menu entry
 echo Creating start menu entry...
