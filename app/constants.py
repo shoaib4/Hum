@@ -28,7 +28,7 @@ def _resolve_server_binary() -> str:
 
 SERVER_EXE = _resolve_server_binary()
 MODELS_DIR = os.path.join(BASE_DIR, "models")
-DEFAULT_MODEL = "ggml-base.bin"
+DEFAULT_MODEL = "ggml-small.en.bin"
 
 
 def _resolve_model_path() -> str:

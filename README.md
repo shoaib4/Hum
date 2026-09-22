@@ -28,9 +28,13 @@ cd hum
 ```
 
 2. **Download a Whisper model:**
-   - [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) (~148 MB, recommended)
-   - [ggml-tiny.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin) (~75 MB, faster but less accurate)
+   - [ggml-small.en.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin) (~488 MB, recommended — English only)
+   - [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) (~148 MB, faster, multilingual)
+   - [ggml-tiny.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin) (~75 MB, fastest but least accurate)
    - Place the downloaded `.bin` file in the `models/` folder
+
+   Hum loads `ggml-small.en.bin` by default and falls back to any model present in
+   `models/`, so any of the above works. See [Choosing a model](#choosing-a-model).
 
 3. **Install dependencies:**
 ```bash
@@ -76,11 +80,11 @@ python main.py
 
 ### Choosing a model
 
-Hum loads `ggml-base.bin` by default. To use a different one, drop it in `models/`
-and set `HUM_MODEL`:
+Hum loads `ggml-small.en.bin` by default. To use a different one, drop it in
+`models/` and set `HUM_MODEL`:
 
 ```bash
-HUM_MODEL=ggml-small.en.bin python main.py
+HUM_MODEL=ggml-base.bin python main.py
 ```
 
 If the requested model is missing, Hum falls back to any `.bin` in `models/`.
@@ -89,12 +93,16 @@ Measured on a 10-core CPU-only machine (no GPU), transcribing an 11-second clip:
 
 | Model | Size | Time | Speed | Notes |
 |-------|------|------|-------|-------|
-| `ggml-base.bin` | 148 MB | 0.7 s | ~16× realtime | default; fastest |
-| `ggml-small.en.bin` | 488 MB | 2.5 s | ~4.4× realtime | best accuracy/speed trade-off for English |
+| `ggml-base.bin` | 148 MB | 0.7 s | ~16× realtime | fastest; multilingual |
+| `ggml-small.en.bin` | 488 MB | 2.5 s | ~4.4× realtime | **default** — best accuracy/speed trade-off for English |
 | `ggml-large-v3-turbo-q5_0.bin` | 574 MB | 14.0 s | **0.8× realtime** | too slow without a GPU |
 
 `large-v3-turbo` is fast on a GPU but not on CPU: its 4-layer decoder is quick while
 the full 32-layer encoder still runs, and the encoder dominates on CPU.
+
+On the same clip band-limited to a telephone passband (300–3400 Hz) and mixed with
+noise, `small.en` transcribed every condition without error while `base` did not.
+Note this was a single utterance — treat it as a tier comparison, not a precise WER.
 
 **Audio quality matters more than model size.** Whisper expects 16 kHz audio. If your
 microphone arrives over a narrowband channel (VDI/remote-desktop audio redirection is
@@ -200,10 +208,18 @@ python build.py
 - **Channels**: Mono
 
 ### Whisper Settings
-- **Model**: ggml-base.bin (configurable)
+- **Model**: ggml-small.en.bin (override with `HUM_MODEL`)
 - **Language**: English (configurable via constants.py)
 - **Server Port**: 3003
+- **Threads**: half the available CPU cores
 - **Processing**: Local Whisper.cpp server
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `HUM_MODEL` | Model filename inside `models/` to load, e.g. `ggml-base.bin` |
+| `HUM_NO_AUTOTYPE` | Set to `1` on Linux to skip typing and only copy to the clipboard |
 
 ### Customization
 Edit `app/constants.py` to configure:
@@ -226,18 +242,23 @@ hum/
 │   ├── audio_recorder.py         # Audio capture using sounddevice
 │   └── speech_engine.py          # Whisper.cpp transcription engine
 ├── backends/                     # Platform-specific implementations
-│   └── windows/                  # Windows text insertion & server management
+│   ├── common/                   # Platform-neutral whisper-server management
+│   ├── windows/                  # Windows text insertion (clipboard)
+│   └── linux/                    # Linux text insertion (XTEST + clipboard)
 ├── ui/                           # User interface components
 │   ├── floating_pill.py          # Main floating widget with all states
 │   ├── expanded_panel.py         # Settings panel
 │   └── theme.py                  # UI styling and colors
-├── whisper_cpp/                  # Whisper server (included in repo)
-│   └── whisper-server.exe
+├── whisper_cpp/                  # Whisper server
+│   ├── whisper-server.exe        # bundled for Windows
+│   └── whisper-server            # built locally on Linux (gitignored)
 ├── models/                       # Whisper model files (user-provided)
-│   └── ggml-base.bin
+│   └── ggml-small.en.bin
 ├── assets/                       # Resources
 │   ├── icons/                    # SVG icons for UI buttons
 │   └── images/                   # Screenshots of UI states
+├── scripts/
+│   └── setup_linux.sh            # Builds the server and fetches a model
 ├── build.py                      # Executable build script
 └── main.py                       # Application entry point
 ```
@@ -248,6 +269,7 @@ hum/
 - **sounddevice** (>=0.5.3) - Audio recording interface
 - **numpy** (>=1.24) - Audio data processing
 - **openai** (>=1.0) - Client for Whisper API compatibility
+- **pynput** (>=1.7, Linux only) - Types text at the cursor via X11 XTEST
 
 ### Build Dependencies (Optional)
 - **pyinstaller** - For creating standalone executables
@@ -257,13 +279,16 @@ hum/
 ### Common Issues
 
 **"Error - Transcription failed"**
-- Ensure a model file (e.g., `ggml-base.bin`) exists in the `models/` folder
+- Ensure a model file (e.g., `ggml-small.en.bin`) exists in the `models/` folder
 - Verify microphone permissions and audio levels
+- Linux: confirm the server exists — rerun `./scripts/setup_linux.sh`
 
 **No text insertion**
-- Windows only: Ensure proper permissions for text insertion
+- Windows: transcripts are clipboard-only by design — press `Ctrl+V`
 - Check that target application has focus and accepts text input
 - Verify cursor is in a text field
+- Linux: typing needs X11 `XTEST`; under Wayland use `Ctrl+V` instead
+- Linux: if nothing reaches the clipboard either, install `xclip` or `wl-clipboard`
 
 **Floating pill not visible**
 - Check if pill is positioned off-screen (drag to center)
