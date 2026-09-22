@@ -74,6 +74,33 @@ python main.py
 - **No `sudo` for cmake?** `pip install cmake` provides a usable one.
 - If an existing `whisper-server` is on your `PATH`, Hum will use it instead of building one.
 
+### Choosing a model
+
+Hum loads `ggml-base.bin` by default. To use a different one, drop it in `models/`
+and set `HUM_MODEL`:
+
+```bash
+HUM_MODEL=ggml-small.en.bin python main.py
+```
+
+If the requested model is missing, Hum falls back to any `.bin` in `models/`.
+
+Measured on a 10-core CPU-only machine (no GPU), transcribing an 11-second clip:
+
+| Model | Size | Time | Speed | Notes |
+|-------|------|------|-------|-------|
+| `ggml-base.bin` | 148 MB | 0.7 s | ~16× realtime | default; fastest |
+| `ggml-small.en.bin` | 488 MB | 2.5 s | ~4.4× realtime | best accuracy/speed trade-off for English |
+| `ggml-large-v3-turbo-q5_0.bin` | 574 MB | 14.0 s | **0.8× realtime** | too slow without a GPU |
+
+`large-v3-turbo` is fast on a GPU but not on CPU: its 4-layer decoder is quick while
+the full 32-layer encoder still runs, and the encoder dominates on CPU.
+
+**Audio quality matters more than model size.** Whisper expects 16 kHz audio. If your
+microphone arrives over a narrowband channel (VDI/remote-desktop audio redirection is
+often 8 kHz), high frequencies that distinguish consonants are gone before the model
+sees anything, and a larger model recovers only part of it.
+
 ### Building Executable (Optional)
 
 For easier distribution without requiring Python:

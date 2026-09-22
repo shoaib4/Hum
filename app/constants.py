@@ -29,7 +29,30 @@ def _resolve_server_binary() -> str:
 SERVER_EXE = _resolve_server_binary()
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 DEFAULT_MODEL = "ggml-base.bin"
-MODEL_PATH = os.path.join(MODELS_DIR, DEFAULT_MODEL)
+
+
+def _resolve_model_path() -> str:
+    """Pick the model to load: HUM_MODEL, then DEFAULT_MODEL, then any model present.
+
+    The fallback keeps Hum usable when someone downloaded a model other than the
+    default. Returns the requested path even when nothing exists, so callers can
+    report it.
+    """
+    requested = os.environ.get("HUM_MODEL") or DEFAULT_MODEL
+    path = os.path.join(MODELS_DIR, requested)
+    if os.path.isfile(path):
+        return path
+
+    try:
+        found = sorted(f for f in os.listdir(MODELS_DIR) if f.endswith(".bin"))
+    except OSError:
+        found = []
+    if found:
+        return os.path.join(MODELS_DIR, found[0])
+    return path
+
+
+MODEL_PATH = _resolve_model_path()
 
 # Server
 PORT = 3003
