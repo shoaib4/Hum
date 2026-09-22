@@ -43,10 +43,18 @@ class Voice2TextApp:
         self.engine = WhisperCppEngine()
         self.text_inserter = None
 
-        # Load text inserter (Windows only for now)
+        # Load platform text inserter
         if sys.platform == "win32":
             from backends.windows.text_inserter import WindowsTextInserter
             self.text_inserter = WindowsTextInserter()
+        elif sys.platform.startswith("linux"):
+            from backends.linux.text_inserter import LinuxTextInserter
+            self.text_inserter = LinuxTextInserter()
+        else:
+            logger.warning(
+                f"No text inserter for platform {sys.platform!r}; "
+                "transcripts will only be logged."
+            )
 
         # UI
         self.pill = FloatingPill()
@@ -148,18 +156,12 @@ class Voice2TextApp:
 
     def _on_copy_error(self):
         """Copy error logs to clipboard."""
-        import subprocess
         log_text = "Voice2Text Error Log\n" + "-" * 40 + "\nTranscription failed. Check whisper-server status."
-        try:
-            process = subprocess.Popen(
-                ["clip.exe"],
-                stdin=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-            )
-            process.communicate(input=log_text.encode("utf-16-le"))
+        # copy() is clipboard-only, so the log is never typed at the cursor.
+        if self.text_inserter and self.text_inserter.copy(log_text):
             logger.info("Error logs copied to clipboard")
-        except Exception as e:
-            logger.error(f"Failed to copy error logs: {e}")
+        else:
+            logger.error("Failed to copy error logs")
 
     def _on_exit(self):
         """Shutdown everything and quit."""

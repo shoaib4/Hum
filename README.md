@@ -6,11 +6,11 @@
 
 - **Floating UI**: Always-on-top pill widget that stays accessible
 - **Real-time Transcription**: Powered by local Whisper.cpp for fast, offline processing
-- **Smart Text Insertion**: Automatically inserts transcribed text at your current cursor position
+- **Smart Text Insertion**: Types transcribed text at your cursor on Linux (X11); copies to the clipboard on Windows for a manual `Ctrl+V`
 - **Visual Feedback**: Animated states showing recording progress and status
-- **Cross-platform**: Windows support with Linux backend architecture
+- **Cross-platform**: Windows and Linux
 - **Privacy-first**: All processing happens locally - no cloud services required
-- **Self-contained**: Whisper server included in the repo — no external installs needed
+- **Self-contained**: Whisper server bundled for Windows; built locally on Linux with one script
 
 ## 🚀 Quick Start
 
@@ -19,7 +19,7 @@
 - Python 3.8+
 - Microphone access permissions
 
-### Setup
+### Setup (Windows)
 
 1. **Clone the repository:**
 ```bash
@@ -28,9 +28,13 @@ cd hum
 ```
 
 2. **Download a Whisper model:**
-   - [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) (~148 MB, recommended)
-   - [ggml-tiny.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin) (~75 MB, faster but less accurate)
+   - [ggml-small.en.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin) (~488 MB, recommended — English only)
+   - [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) (~148 MB, faster, multilingual)
+   - [ggml-tiny.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin) (~75 MB, fastest but least accurate)
    - Place the downloaded `.bin` file in the `models/` folder
+
+   Hum loads `ggml-small.en.bin` by default and falls back to any model present in
+   `models/`, so any of the above works. See [Choosing a model](#choosing-a-model).
 
 3. **Install dependencies:**
 ```bash
@@ -43,6 +47,67 @@ python main.py
 ```
 
 > **Note:** `whisper-server.exe` is already included in the `whisper_cpp/` folder — no need to download it separately.
+
+### Setup (Linux)
+
+The repo bundles only the Windows server binary, so Linux builds it locally.
+
+1. **Install system packages** (Debian/Ubuntu shown; adjust for your distro):
+```bash
+sudo apt install -y python3-venv build-essential cmake git \
+                    portaudio19-dev libxcb-cursor0 libxkbcommon-x11-0 libegl1 libgl1 \
+                    xclip            # or wl-clipboard on Wayland
+```
+
+2. **Build the whisper.cpp server and download a model:**
+```bash
+./scripts/setup_linux.sh             # or: MODEL=ggml-tiny.bin ./scripts/setup_linux.sh
+```
+
+3. **Install Python dependencies and run:**
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+**Notes for Linux users:**
+
+- **Text insertion** types at your cursor using the X11 `XTEST` extension (via `pynput`), and *also* copies to the clipboard as a fallback. Set `HUM_NO_AUTOTYPE=1` for clipboard-only behaviour.
+- **Wayland**: typing at the cursor is X11-only and may not reach native Wayland windows — use `Ctrl+V`, or run under XWayland with `QT_QPA_PLATFORM=xcb`.
+- **No `sudo` for cmake?** `pip install cmake` provides a usable one.
+- If an existing `whisper-server` is on your `PATH`, Hum will use it instead of building one.
+
+### Choosing a model
+
+Hum loads `ggml-small.en.bin` by default. To use a different one, drop it in
+`models/` and set `HUM_MODEL`:
+
+```bash
+HUM_MODEL=ggml-base.bin python main.py
+```
+
+If the requested model is missing, Hum falls back to any `.bin` in `models/`.
+
+Measured on a 10-core CPU-only machine (no GPU), transcribing an 11-second clip:
+
+| Model | Size | Time | Speed | Notes |
+|-------|------|------|-------|-------|
+| `ggml-base.bin` | 148 MB | 0.7 s | ~16× realtime | fastest; multilingual |
+| `ggml-small.en.bin` | 488 MB | 2.5 s | ~4.4× realtime | **default** — best accuracy/speed trade-off for English |
+| `ggml-large-v3-turbo-q5_0.bin` | 574 MB | 14.0 s | **0.8× realtime** | too slow without a GPU |
+
+`large-v3-turbo` is fast on a GPU but not on CPU: its 4-layer decoder is quick while
+the full 32-layer encoder still runs, and the encoder dominates on CPU.
+
+On the same clip band-limited to a telephone passband (300–3400 Hz) and mixed with
+noise, `small.en` transcribed every condition without error while `base` did not.
+Note this was a single utterance — treat it as a tier comparison, not a precise WER.
+
+**Audio quality matters more than model size.** Whisper expects 16 kHz audio. If your
+microphone arrives over a narrowband channel (VDI/remote-desktop audio redirection is
+often 8 kHz), high frequencies that distinguish consonants are gone before the model
+sees anything, and a larger model recovers only part of it.
 
 ### Building Executable (Optional)
 
@@ -71,7 +136,7 @@ python build.py
 1. **Launch Hum** - A floating pill appears at the bottom of your screen
 2. **Click to Record** - Click the microphone icon to start recording
 3. **Speak Naturally** - The pill shows visual feedback while listening
-4. **Auto-transcribe** - Speech is processed locally and inserted at cursor
+4. **Auto-transcribe** - Speech is processed locally, then typed at your cursor (Linux/X11) or copied to the clipboard for `Ctrl+V` (Windows)
 5. **Continue Working** - The pill returns to ready state for next recording
 
 ## 🖼️ UI States & Screenshots
@@ -143,10 +208,18 @@ python build.py
 - **Channels**: Mono
 
 ### Whisper Settings
-- **Model**: ggml-base.bin (configurable)
+- **Model**: ggml-small.en.bin (override with `HUM_MODEL`)
 - **Language**: English (configurable via constants.py)
 - **Server Port**: 3003
+- **Threads**: half the available CPU cores
 - **Processing**: Local Whisper.cpp server
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `HUM_MODEL` | Model filename inside `models/` to load, e.g. `ggml-base.bin` |
+| `HUM_NO_AUTOTYPE` | Set to `1` on Linux to skip typing and only copy to the clipboard |
 
 ### Customization
 Edit `app/constants.py` to configure:
@@ -169,18 +242,23 @@ hum/
 │   ├── audio_recorder.py         # Audio capture using sounddevice
 │   └── speech_engine.py          # Whisper.cpp transcription engine
 ├── backends/                     # Platform-specific implementations
-│   └── windows/                  # Windows text insertion & server management
+│   ├── common/                   # Platform-neutral whisper-server management
+│   ├── windows/                  # Windows text insertion (clipboard)
+│   └── linux/                    # Linux text insertion (XTEST + clipboard)
 ├── ui/                           # User interface components
 │   ├── floating_pill.py          # Main floating widget with all states
 │   ├── expanded_panel.py         # Settings panel
 │   └── theme.py                  # UI styling and colors
-├── whisper_cpp/                  # Whisper server (included in repo)
-│   └── whisper-server.exe
+├── whisper_cpp/                  # Whisper server
+│   ├── whisper-server.exe        # bundled for Windows
+│   └── whisper-server            # built locally on Linux (gitignored)
 ├── models/                       # Whisper model files (user-provided)
-│   └── ggml-base.bin
+│   └── ggml-small.en.bin
 ├── assets/                       # Resources
 │   ├── icons/                    # SVG icons for UI buttons
 │   └── images/                   # Screenshots of UI states
+├── scripts/
+│   └── setup_linux.sh            # Builds the server and fetches a model
 ├── build.py                      # Executable build script
 └── main.py                       # Application entry point
 ```
@@ -191,6 +269,7 @@ hum/
 - **sounddevice** (>=0.5.3) - Audio recording interface
 - **numpy** (>=1.24) - Audio data processing
 - **openai** (>=1.0) - Client for Whisper API compatibility
+- **pynput** (>=1.7, Linux only) - Types text at the cursor via X11 XTEST
 
 ### Build Dependencies (Optional)
 - **pyinstaller** - For creating standalone executables
@@ -200,13 +279,16 @@ hum/
 ### Common Issues
 
 **"Error - Transcription failed"**
-- Ensure a model file (e.g., `ggml-base.bin`) exists in the `models/` folder
+- Ensure a model file (e.g., `ggml-small.en.bin`) exists in the `models/` folder
 - Verify microphone permissions and audio levels
+- Linux: confirm the server exists — rerun `./scripts/setup_linux.sh`
 
 **No text insertion**
-- Windows only: Ensure proper permissions for text insertion
+- Windows: transcripts are clipboard-only by design — press `Ctrl+V`
 - Check that target application has focus and accepts text input
 - Verify cursor is in a text field
+- Linux: typing needs X11 `XTEST`; under Wayland use `Ctrl+V` instead
+- Linux: if nothing reaches the clipboard either, install `xclip` or `wl-clipboard`
 
 **Floating pill not visible**
 - Check if pill is positioned off-screen (drag to center)

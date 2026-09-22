@@ -32,3 +32,10 @@ class SpeechEngineInterface(ABC):
 class TextInserterInterface(ABC):
     @abstractmethod
     def insert(self, text: str) -> bool: ...
+
+    def copy(self, text: str) -> bool:
+        """Put text on the clipboard without delivering it to the focused window.
+
+        Defaults to insert() for backends where insertion is already clipboard-only.
+        """
+        return self.insert(text)
