@@ -63,6 +63,9 @@ Thumbs.db
 # Model files (users download these locally)
 models/*.bin
 
+# Locally built whisper.cpp server (Linux/macOS users build this themselves)
+whisper_cpp/whisper-server
+
 # Logs
 *.log
 logs/

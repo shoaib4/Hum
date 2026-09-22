@@ -6,11 +6,11 @@
 
 - **Floating UI**: Always-on-top pill widget that stays accessible
 - **Real-time Transcription**: Powered by local Whisper.cpp for fast, offline processing
-- **Smart Text Insertion**: Automatically inserts transcribed text at your current cursor position
+- **Smart Text Insertion**: Types transcribed text at your cursor on Linux (X11); copies to the clipboard on Windows for a manual `Ctrl+V`
 - **Visual Feedback**: Animated states showing recording progress and status
-- **Cross-platform**: Windows support with Linux backend architecture
+- **Cross-platform**: Windows and Linux
 - **Privacy-first**: All processing happens locally - no cloud services required
-- **Self-contained**: Whisper server included in the repo — no external installs needed
+- **Self-contained**: Whisper server bundled for Windows; built locally on Linux with one script
 
 ## 🚀 Quick Start
 
@@ -19,7 +19,7 @@
 - Python 3.8+
 - Microphone access permissions
 
-### Setup
+### Setup (Windows)
 
 1. **Clone the repository:**
 ```bash
@@ -43,6 +43,36 @@ python main.py
 ```
 
 > **Note:** `whisper-server.exe` is already included in the `whisper_cpp/` folder — no need to download it separately.
+
+### Setup (Linux)
+
+The repo bundles only the Windows server binary, so Linux builds it locally.
+
+1. **Install system packages** (Debian/Ubuntu shown; adjust for your distro):
+```bash
+sudo apt install -y python3-venv build-essential cmake git \
+                    portaudio19-dev libxcb-cursor0 libxkbcommon-x11-0 libegl1 libgl1 \
+                    xclip            # or wl-clipboard on Wayland
+```
+
+2. **Build the whisper.cpp server and download a model:**
+```bash
+./scripts/setup_linux.sh             # or: MODEL=ggml-tiny.bin ./scripts/setup_linux.sh
+```
+
+3. **Install Python dependencies and run:**
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+**Notes for Linux users:**
+
+- **Text insertion** types at your cursor using the X11 `XTEST` extension (via `pynput`), and *also* copies to the clipboard as a fallback. Set `HUM_NO_AUTOTYPE=1` for clipboard-only behaviour.
+- **Wayland**: typing at the cursor is X11-only and may not reach native Wayland windows — use `Ctrl+V`, or run under XWayland with `QT_QPA_PLATFORM=xcb`.
+- **No `sudo` for cmake?** `pip install cmake` provides a usable one.
+- If an existing `whisper-server` is on your `PATH`, Hum will use it instead of building one.
 
 ### Building Executable (Optional)
 
@@ -71,7 +101,7 @@ python build.py
 1. **Launch Hum** - A floating pill appears at the bottom of your screen
 2. **Click to Record** - Click the microphone icon to start recording
 3. **Speak Naturally** - The pill shows visual feedback while listening
-4. **Auto-transcribe** - Speech is processed locally and inserted at cursor
+4. **Auto-transcribe** - Speech is processed locally, then typed at your cursor (Linux/X11) or copied to the clipboard for `Ctrl+V` (Windows)
 5. **Continue Working** - The pill returns to ready state for next recording
 
 ## 🖼️ UI States & Screenshots

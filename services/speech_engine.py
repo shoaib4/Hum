@@ -6,7 +6,7 @@ from openai import OpenAI
 
 from core.interfaces import SpeechEngineInterface
 from app.constants import PORT, LANGUAGE
-from backends.windows.server import WhisperServer
+from backends.common.server import WhisperServer
 
 logger = logging.getLogger(__name__)
 
